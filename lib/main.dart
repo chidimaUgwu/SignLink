@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'event_type_screen.dart'; // Import our new screen
 
 void main() {
   runApp(const MyApp());
@@ -13,7 +14,7 @@ class MyApp extends StatelessWidget {
       title: 'Interpreter Request',
       theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const RequestHomePage(),
-      debugShowCheckedModeBanner: false, // Removes the debug banner
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -26,8 +27,13 @@ class RequestHomePage extends StatefulWidget {
 }
 
 class _RequestHomePageState extends State<RequestHomePage> {
-  // This will track which step of the form we're on
   int _currentStep = 1;
+
+  // Track selected data from each step
+  String? _selectedEventType;
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+  String? _selectedDuration;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +41,7 @@ class _RequestHomePageState extends State<RequestHomePage> {
       appBar: AppBar(
         title: const Text('Interpreter Request'),
         centerTitle: true,
-        elevation: 2, // Adds a slight shadow
+        elevation: 2,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -44,7 +50,7 @@ class _RequestHomePageState extends State<RequestHomePage> {
           children: [
             // Progress indicator
             LinearProgressIndicator(
-              value: _currentStep / 4, // 4 total steps, so step 1 = 25%
+              value: _currentStep / 4,
               backgroundColor: Colors.grey[300],
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
             ),
@@ -55,39 +61,14 @@ class _RequestHomePageState extends State<RequestHomePage> {
             ),
             const SizedBox(height: 24),
 
-            // Placeholder for different steps
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.calendar_month,
-                      size: 80,
-                      color: Colors.blue[200],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Welcome to Interpreter Request',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'We\'ll guide you through requesting an interpreter\n'
-                      'for your class, event, or meeting.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            // Show different screens based on current step
+            Expanded(child: _buildCurrentStep()),
 
             // Navigation buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Back button (disabled on step 1)
+                // Back button
                 if (_currentStep > 1)
                   ElevatedButton(
                     onPressed: () {
@@ -102,21 +83,11 @@ class _RequestHomePageState extends State<RequestHomePage> {
                     child: const Text('Back'),
                   )
                 else
-                  const SizedBox(), // Empty space when back is hidden
-                // Next button
+                  const SizedBox(),
+
+                // Next/Submit button
                 ElevatedButton(
-                  onPressed: () {
-                    if (_currentStep < 4) {
-                      setState(() {
-                        _currentStep++;
-                      });
-                    } else {
-                      // Submit form when on step 4
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Request submitted!')),
-                      );
-                    }
-                  },
+                  onPressed: _canProceed() ? _handleNext : null,
                   child: Text(_currentStep == 4 ? 'Submit' : 'Next Step'),
                 ),
               ],
@@ -125,5 +96,80 @@ class _RequestHomePageState extends State<RequestHomePage> {
         ),
       ),
     );
+  }
+
+  // Build the current step's screen
+  Widget _buildCurrentStep() {
+    switch (_currentStep) {
+      case 1:
+        return EventTypeScreen(
+          onEventTypeSelected: (type) {
+            setState(() {
+              _selectedEventType = type;
+            });
+          },
+        );
+      case 2:
+        // We'll build this next
+        return const Center(child: Text('Step 2: Date & Time (Coming Soon)'));
+      case 3:
+        // We'll build this later
+        return const Center(child: Text('Step 3: Review (Coming Soon)'));
+      case 4:
+        // We'll build this later
+        return const Center(child: Text('Step 4: Confirmation (Coming Soon)'));
+      default:
+        return const SizedBox();
+    }
+  }
+
+  // Check if we can proceed to next step
+  bool _canProceed() {
+    switch (_currentStep) {
+      case 1:
+        return _selectedEventType != null;
+      case 2:
+        return _selectedDate != null &&
+            _selectedTime != null &&
+            _selectedDuration != null;
+      case 3:
+        return true; // Review step always allows proceeding
+      case 4:
+        return true; // Final step
+      default:
+        return false;
+    }
+  }
+
+  // Handle next button press
+  void _handleNext() {
+    if (_currentStep < 4) {
+      setState(() {
+        _currentStep++;
+      });
+    } else {
+      // Submit the request
+      _submitRequest();
+    }
+  }
+
+  // Submit the final request
+  void _submitRequest() {
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Request submitted! Event: $_selectedEventType'),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    //Optional: Reset form after submission
+    setState(() {
+      _currentStep = 1;
+      _selectedEventType = null;
+      _selectedDate = null;
+      _selectedTime = null;
+      _selectedDuration = null;
+    });
   }
 }
