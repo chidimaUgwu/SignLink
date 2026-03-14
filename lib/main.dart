@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'event_type_screen.dart'; // Import our new screen
+import 'date_time_screen.dart'; // Import the date & time selection screen (to be implemented)
 
 void main() {
   runApp(const MyApp());
@@ -110,8 +111,29 @@ class _RequestHomePageState extends State<RequestHomePage> {
           },
         );
       case 2:
-        // We'll build this next
-        return const Center(child: Text('Step 2: Date & Time (Coming Soon)'));
+        // In _RequestHomePageState class, replace the case 2:
+        //case 2:
+        return DateTimeScreen(
+          onDateSelected: (date) {
+            setState(() {
+              _selectedDate = date;
+            });
+          },
+          onTimeSelected: (time) {
+            setState(() {
+              _selectedTime = time;
+            });
+          },
+          onDurationSelected: (duration) {
+            setState(() {
+              _selectedDuration = duration;
+            });
+          },
+          initialDate: _selectedDate,
+          initialTime: _selectedTime,
+          initialDuration: _selectedDuration,
+        );
+      //return const Center(child: Text('Step 2: Date & Time (Coming Soon)'));
       case 3:
         // We'll build this later
         return const Center(child: Text('Step 3: Review (Coming Soon)'));
