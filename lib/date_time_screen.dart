@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-// This screen allows users to select date, time, and duration
-// Matches your second image design
+// This screen allows users to select date, start time, and end time
+// Duration is automatically calculated
 class DateTimeScreen extends StatefulWidget {
   // Callbacks to notify parent of selections
   final Function(DateTime) onDateSelected;
-  final Function(TimeOfDay) onTimeSelected;
-  final Function(String) onDurationSelected;
+  final Function(TimeOfDay) onStartTimeSelected;
+  final Function(TimeOfDay) onEndTimeSelected;
+  final Function(String) onDurationCalculated; // New callback for duration
 
   // Current values (if user goes back and forth)
   final DateTime? initialDate;
-  final TimeOfDay? initialTime;
-  final String? initialDuration;
+  final TimeOfDay? initialStartTime;
+  final TimeOfDay? initialEndTime;
 
   const DateTimeScreen({
     super.key,
     required this.onDateSelected,
-    required this.onTimeSelected,
-    required this.onDurationSelected,
+    required this.onStartTimeSelected,
+    required this.onEndTimeSelected,
+    required this.onDurationCalculated,
     this.initialDate,
-    this.initialTime,
-    this.initialDuration,
+    this.initialStartTime,
+    this.initialEndTime,
   });
 
   @override
@@ -33,27 +35,29 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDate;
 
-  // Time selection
-  TimeOfDay? _selectedTime;
+  // Time selections
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
 
-  // Duration options (matching your design)
-  final List<String> _durations = ['30 min', '1 hour', '2 hours'];
-  String? _selectedDuration;
+  // Calculated duration
+  String _calculatedDuration = '';
 
-  // Available times (matching your design)
-  final List<TimeOfDay> _availableTimes = [
-    const TimeOfDay(hour: 14, minute: 0), // 2:00 PM
-    const TimeOfDay(hour: 15, minute: 15), // 3:15 PM
-    const TimeOfDay(hour: 16, minute: 30), // 4:30 PM
-  ];
+  // Time picker state
+  bool _isSelectingStartTime =
+      true; // true = picking start, false = picking end
 
   @override
   void initState() {
     super.initState();
     // Initialize with any existing selections
     _selectedDate = widget.initialDate;
-    _selectedTime = widget.initialTime;
-    _selectedDuration = widget.initialDuration;
+    _startTime = widget.initialStartTime;
+    _endTime = widget.initialEndTime;
+
+    // Calculate duration if both times exist
+    if (_startTime != null && _endTime != null) {
+      _calculateDuration();
+    }
   }
 
   @override
@@ -69,7 +73,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Step 2 of 3', // Matching your design
+            'Step 2 of 3',
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
           const SizedBox(height: 24),
@@ -82,21 +86,19 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           _buildTimeSelection(),
           const SizedBox(height: 24),
 
-          // Duration Selection Section
-          _buildDurationSelection(),
+          // Duration Display (calculated automatically)
+          if (_calculatedDuration.isNotEmpty) _buildDurationDisplay(),
           const SizedBox(height: 24),
 
-          // Summary Section (like in your design)
-          if (_selectedDate != null &&
-              _selectedTime != null &&
-              _selectedDuration != null)
+          // Summary Section
+          if (_selectedDate != null && _startTime != null && _endTime != null)
             _buildSummary(),
         ],
       ),
     );
   }
 
-  // Calendar widget
+  // Calendar widget (same as before)
   Widget _buildCalendar() {
     return Container(
       decoration: BoxDecoration(
@@ -115,16 +117,13 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
             _selectedDate = selectedDay;
             _focusedDay = focusedDay;
           });
-          // Notify parent
           widget.onDateSelected(selectedDay);
         },
         calendarStyle: CalendarStyle(
-          // Style for selected date
           selectedDecoration: const BoxDecoration(
             color: Colors.blue,
             shape: BoxShape.circle,
           ),
-          // Style for today
           todayDecoration: BoxDecoration(
             color: Colors.blue.shade100,
             shape: BoxShape.circle,
@@ -134,13 +133,11 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
           formatButtonVisible: false,
           titleCentered: true,
         ),
-        // Show only October 2024 like in your design?
-        // We'll keep it dynamic but you can set focusedDay to DateTime(2024, 10)
       ),
     );
   }
 
-  // Time selection widget
+  // Improved Time Selection with AM/PM pickers
   Widget _buildTimeSelection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,7 +145,7 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         Row(
           children: [
             const Text(
-              'Start Time',
+              'Select Time',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 8),
@@ -164,132 +161,254 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Time options grid
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            childAspectRatio: 2,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-          ),
-          itemCount: _availableTimes.length,
-          itemBuilder: (context, index) {
-            final time = _availableTimes[index];
-            final timeString = _formatTimeOfDay(time);
-            final isSelected = _selectedTime == time;
-
-            return InkWell(
-              onTap: () {
-                setState(() {
-                  _selectedTime = time;
-                });
-                widget.onTimeSelected(time);
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.blue : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isSelected ? Colors.blue : Colors.grey.shade300,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    timeString,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  // Duration selection widget
-  Widget _buildDurationSelection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Estimated Duration',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-
+        // Start Time and End Time pickers side by side
         Row(
-          children: _durations.map((duration) {
-            final isSelected = _selectedDuration == duration;
-
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedDuration = duration;
-                    });
-                    widget.onDurationSelected(duration);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected ? Colors.blue : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected ? Colors.blue : Colors.grey.shade300,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        duration,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+          children: [
+            // Start Time Picker
+            Expanded(
+              child: _buildTimePickerCard(
+                label: 'START TIME',
+                time: _startTime,
+                isSelected: _isSelectingStartTime,
+                onTap: () => _pickTime(isStartTime: true),
               ),
-            );
-          }).toList(),
+            ),
+            const SizedBox(width: 16),
+            // End Time Picker
+            Expanded(
+              child: _buildTimePickerCard(
+                label: 'END TIME',
+                time: _endTime,
+                isSelected: !_isSelectingStartTime && _startTime != null,
+                onTap: () => _pickTime(isStartTime: false),
+              ),
+            ),
+          ],
         ),
+
+        // Help text
+        if (_startTime == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Tap START TIME to begin',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          )
+        else if (_endTime == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Now tap END TIME to complete',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
       ],
     );
   }
 
-  // Summary widget (matches your design)
-  Widget _buildSummary() {
-    // Calculate end time based on duration
-    String endTimeString = '';
-    if (_selectedTime != null && _selectedDuration != null) {
-      int minutesToAdd = 0;
-      if (_selectedDuration == '30 min') minutesToAdd = 30;
-      if (_selectedDuration == '1 hour') minutesToAdd = 60;
-      if (_selectedDuration == '2 hours') minutesToAdd = 120;
+  // Individual time picker card
+  Widget _buildTimePickerCard({
+    required String label,
+    required TimeOfDay? time,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.blue.withOpacity(0.1)
+              : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? Colors.blue : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? Colors.blue : Colors.grey[600],
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              time != null ? _formatTimeOfDay(time) : '--:-- --',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: time != null
+                    ? (isSelected ? Colors.blue : Colors.black)
+                    : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-      final startDateTime = DateTime(
-        2000,
-        1,
-        1,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
-      );
-      final endDateTime = startDateTime.add(Duration(minutes: minutesToAdd));
-      endTimeString = _formatTime(TimeOfDay.fromDateTime(endDateTime));
+  // Time picker dialog
+  Future<void> _pickTime({required bool isStartTime}) async {
+    // Set which one we're selecting
+    setState(() {
+      _isSelectingStartTime = isStartTime;
+    });
+
+    // Show time picker dialog
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: isStartTime
+          ? (_startTime ?? TimeOfDay.now())
+          : (_endTime ?? TimeOfDay.now()),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isStartTime) {
+          _startTime = picked;
+          widget.onStartTimeSelected(picked);
+          // Clear end time if it's before start time
+          if (_endTime != null && _isEndTimeBeforeStart()) {
+            _endTime = null;
+          }
+        } else {
+          // Validate end time is after start time
+          if (_startTime != null && _isEndTimeValid(picked)) {
+            _endTime = picked;
+            widget.onEndTimeSelected(picked);
+          } else {
+            // Show error message
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('End time must be after start time'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
+        }
+
+        // Recalculate duration if both times are set
+        if (_startTime != null && _endTime != null) {
+          _calculateDuration();
+        }
+      });
+    }
+  }
+
+  // Check if end time is before start time
+  bool _isEndTimeBeforeStart() {
+    if (_startTime == null || _endTime == null) return false;
+
+    final startMinutes = _startTime!.hour * 60 + _startTime!.minute;
+    final endMinutes = _endTime!.hour * 60 + _endTime!.minute;
+
+    return endMinutes <= startMinutes;
+  }
+
+  // Check if end time is valid (after start time)
+  bool _isEndTimeValid(TimeOfDay endTime) {
+    if (_startTime == null) return true;
+
+    final startMinutes = _startTime!.hour * 60 + _startTime!.minute;
+    final endMinutes = endTime.hour * 60 + endTime.minute;
+
+    return endMinutes > startMinutes;
+  }
+
+  // Calculate duration between start and end time
+  void _calculateDuration() {
+    if (_startTime == null || _endTime == null) return;
+
+    // Convert both times to minutes since midnight
+    final startMinutes = _startTime!.hour * 60 + _startTime!.minute;
+    final endMinutes = _endTime!.hour * 60 + _endTime!.minute;
+
+    // Calculate difference
+    int diffMinutes = endMinutes - startMinutes;
+
+    // Handle if end time is next day (shouldn't happen in our case, but just in case)
+    if (diffMinutes < 0) {
+      diffMinutes += 24 * 60;
     }
 
+    // Format duration string
+    String durationText;
+    if (diffMinutes < 60) {
+      durationText = '$diffMinutes min';
+    } else {
+      final hours = diffMinutes ~/ 60;
+      final minutes = diffMinutes % 60;
+      if (minutes == 0) {
+        durationText = '$hours hour${hours > 1 ? 's' : ''}';
+      } else {
+        durationText = '$hours hour${hours > 1 ? 's' : ''} $minutes min';
+      }
+    }
+
+    setState(() {
+      _calculatedDuration = durationText;
+    });
+
+    // Notify parent
+    widget.onDurationCalculated(durationText);
+  }
+
+  // Duration display
+  Widget _buildDurationDisplay() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Estimated Duration',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _calculatedDuration,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.green.shade700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Summary widget
+  Widget _buildSummary() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -302,8 +421,8 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Interpreter requested for ${_formatDate(_selectedDate!)} at ${_formatTimeOfDay(_selectedTime!)}. '
-            'Estimated finish: $endTimeString.',
+            'Interpreter requested for ${_formatDate(_selectedDate!)} from ${_formatTimeOfDay(_startTime!)} to ${_formatTimeOfDay(_endTime!)}. '
+            'Total duration: $_calculatedDuration.',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
         ],
@@ -317,10 +436,6 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
     final minute = time.minute.toString().padLeft(2, '0');
     final period = time.period == DayPeriod.am ? 'AM' : 'PM';
     return '$hour:$minute $period';
-  }
-
-  String _formatTime(TimeOfDay time) {
-    return _formatTimeOfDay(time);
   }
 
   String _formatDate(DateTime date) {

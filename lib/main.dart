@@ -33,8 +33,15 @@ class _RequestHomePageState extends State<RequestHomePage> {
   // Track selected data from each step
   String? _selectedEventType;
   DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
+  TimeOfDay? _selectedStartTime; // Changed from _selectedTime
+  TimeOfDay? _selectedEndTime; // New
   String? _selectedDuration;
+
+  // // Track selected data from each step
+  // String? _selectedEventType;
+  // DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+  // String? _selectedDuration;
 
   @override
   Widget build(BuildContext context) {
@@ -111,27 +118,30 @@ class _RequestHomePageState extends State<RequestHomePage> {
           },
         );
       case 2:
-        // In _RequestHomePageState class, replace the case 2:
-        //case 2:
         return DateTimeScreen(
           onDateSelected: (date) {
             setState(() {
               _selectedDate = date;
             });
           },
-          onTimeSelected: (time) {
+          onStartTimeSelected: (startTime) {
             setState(() {
-              _selectedTime = time;
+              _selectedStartTime = startTime;
             });
           },
-          onDurationSelected: (duration) {
+          onEndTimeSelected: (endTime) {
+            setState(() {
+              _selectedEndTime = endTime;
+            });
+          },
+          onDurationCalculated: (duration) {
             setState(() {
               _selectedDuration = duration;
             });
           },
           initialDate: _selectedDate,
-          initialTime: _selectedTime,
-          initialDuration: _selectedDuration,
+          initialStartTime: _selectedStartTime,
+          initialEndTime: _selectedEndTime,
         );
       //return const Center(child: Text('Step 2: Date & Time (Coming Soon)'));
       case 3:
@@ -152,12 +162,12 @@ class _RequestHomePageState extends State<RequestHomePage> {
         return _selectedEventType != null;
       case 2:
         return _selectedDate != null &&
-            _selectedTime != null &&
-            _selectedDuration != null;
+            _selectedStartTime != null &&
+            _selectedEndTime != null;
       case 3:
-        return true; // Review step always allows proceeding
+        return true;
       case 4:
-        return true; // Final step
+        return true;
       default:
         return false;
     }
